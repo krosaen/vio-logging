@@ -1,0 +1,5 @@
+# Desktop tooling deps (tools/). Recreate the env with:
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+numpy>=2.5
+scipy>=1.18
+matplotlib>=3.11

@@ -1,0 +1,30 @@
+name: VIOLogger
+options:
+  bundleIdPrefix: com.krosaen
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+targets:
+  VIOLogger:
+    type: application
+    platform: iOS
+    sources: [VIOLogger]
+    info:
+      path: VIOLogger/Info.plist
+      properties:
+        CFBundleDisplayName: VIO Logger
+        NSCameraUsageDescription: Camera frames are recorded for visual-inertial odometry research logging.
+        NSMotionUsageDescription: IMU (accelerometer/gyroscope) data is recorded alongside camera frames for VIO research.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIRequiredDeviceCapabilities: [arkit]
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: CXPR7W5GGY
