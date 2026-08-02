@@ -27,6 +27,10 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
     @Published var lastError: String?
     @Published var recordingStartedAt: Date?
     @Published var codec: VideoWriter.Codec = .hevc
+    /// When enabled, ARKit tracking is reset at the moment recording starts, so
+    /// ARKit faces the same cold-initialization problem as offline estimators.
+    /// The log then captures its convergence (tracking states in frames.jsonl).
+    @Published var coldStart = false
 
     let session = ARSession()
 
@@ -47,6 +51,8 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
     private var wallClockStart: Date?
     private var uptimeStart: TimeInterval?
     private var chosenFormat: ARConfiguration.VideoFormat?
+    private var configuration: ARWorldTrackingConfiguration?
+    private var coldStartUsed = false
     private var depthSize: (width: Int, height: Int)?
 
     private static let depthEvery = 6
@@ -66,6 +72,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
         if ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
             config.frameSemantics.insert(.sceneDepth)
         }
+        configuration = config
         session.delegateQueue = sessionQueue
         session.delegate = self
         session.run(config)
@@ -109,6 +116,11 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
             frameWriter = try JSONLWriter(url: dir.appendingPathComponent("frames.jsonl"))
             cloudWriter = try JSONLWriter(url: dir.appendingPathComponent("pointcloud.jsonl"))
             try motionLogger.start(in: dir)
+
+            coldStartUsed = coldStart
+            if coldStartUsed, let config = configuration {
+                session.run(config, options: [.resetTracking, .removeExistingAnchors])
+            }
 
             folder = dir
             depthDir = depth
@@ -224,6 +236,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
             "codec": codec.rawValue,
             "imu_sample_counts": imuCounts,
             "hf_accel_active": hfAccelActive,
+            "cold_start": coldStartUsed,
             "conventions": [
                 "timebase": "all t values are seconds since boot; shared by ARKit and CoreMotion",
                 "wall_clock_mapping": "unix_time(t) = wall_clock_start + (t - uptime_at_start)",

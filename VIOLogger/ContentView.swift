@@ -80,6 +80,14 @@ struct ContentView: View {
             .frame(maxWidth: 220)
             .disabled(recorder.isRecording)
 
+            Toggle(isOn: $recorder.coldStart) {
+                Text("Cold-start ARKit at record")
+                    .font(.footnote)
+            }
+            .frame(maxWidth: 260)
+            .tint(.orange)
+            .disabled(recorder.isRecording)
+
             Button(action: { recorder.toggleRecording() }) {
                 ZStack {
                     Circle()
