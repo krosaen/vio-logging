@@ -1,0 +1,24 @@
+<launch>
+    <!-- Serial (offline, deterministic) OpenVINS run on a VIOLogger bag.
+         All paths are container paths (session dir mounted at /data). -->
+    <arg name="config_path" default="/data/openvins/estimator_config.yaml" />
+    <arg name="bag"         default="/data/cam_imu.bag" />
+    <arg name="path_est"    default="/data/openvins/traj_estimate.txt" />
+    <arg name="verbosity"   default="INFO" />
+
+    <node name="ov_msckf" pkg="ov_msckf" type="ros1_serial_msckf" output="screen" clear_params="true" required="true">
+        <param name="path_bag"    type="str"    value="$(arg bag)" />
+        <param name="bag_start"   type="double" value="0" />
+        <param name="bag_durr"    type="int"    value="-1" />
+        <param name="verbosity"   type="str"    value="$(arg verbosity)" />
+        <param name="config_path" type="str"    value="$(arg config_path)" />
+        <param name="max_cameras" type="int"    value="1" />
+        <param name="use_stereo"  type="bool"   value="false" />
+    </node>
+
+    <node name="recorder_estimate" pkg="ov_eval" type="pose_to_file" output="screen" required="false">
+        <param name="topic"      type="str" value="/ov_msckf/poseimu" />
+        <param name="topic_type" type="str" value="PoseWithCovarianceStamped" />
+        <param name="output"     type="str" value="$(arg path_est)" />
+    </node>
+</launch>

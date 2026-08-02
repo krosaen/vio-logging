@@ -46,6 +46,13 @@ change signing settings, but they'll be lost on regenerate unless mirrored in
   IMU sample counts, tracking state.
 - Keep sessions ≤ 60 s to be kind to thermals and file sizes.
 
+**Capture protocol for VIO runs** (classical mono VIO needs it, ARKit doesn't):
+start with the phone *still on a surface for ~3 s*, then pick it up and make
+*deliberate translational* motion (30–60 cm figure-8s), then the trajectory you
+actually want, and ideally end back at the exact start pose. Rotation-only
+"waving" is degenerate for monocular VIO — scale becomes unobservable and the
+estimator diverges (learned the hard way on session 1).
+
 ## Getting data onto the Mac
 
 - **Finder (recommended for big sessions)**: connect the iPhone via cable →
@@ -91,6 +98,30 @@ python3 -m venv .venv
 `validate_session.py` reports stream rates/gaps, the ARKit-vs-gyro time offset
 (expect < 1 ms at high correlation), a Kabsch estimate of the device→camera
 rotation, and gravity consistency.
+
+Other tools: `vio_session.py` (session parser — numpy streams + lazy video
+frame iterator), `export_rosbag.py` (session → ROS1 bag, no ROS install
+needed), `make_openvins_config.py` (per-session OpenVINS configs),
+`eval_traj.py` (ATE/RPE of an estimated trajectory vs ARKit).
+
+## OpenVINS baseline (Docker)
+
+OpenVINS runs isolated in Docker (via colima on macOS: `brew install colima
+docker && colima start --cpu 4 --memory 8`). One-time image build, then a
+three-step pipeline per session:
+
+```sh
+docker build -t openvins docker/                                # once (~15 min)
+.venv/bin/python tools/export_rosbag.py captures/<session>      # session -> bag
+.venv/bin/python tools/make_openvins_config.py captures/<session>
+docker/run_openvins.sh captures/<session>                       # writes openvins/traj_estimate.txt
+.venv/bin/python tools/eval_traj.py captures/<session> --plot ate.png
+```
+
+The config generator seeds camera intrinsics from the session log and the
+camera-IMU rotation from the Kabsch fit; distortion, translation, and time
+offset start at zero with OpenVINS online calibration enabled. The estimator
+processes the bag serially (deterministic, faster than real time).
 
 ## Data rates (1920×1440 @ 60 fps)
 
