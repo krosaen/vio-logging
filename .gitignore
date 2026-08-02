@@ -6,3 +6,4 @@ build/
 sessions/
 captures/
 .venv/
+__pycache__/
