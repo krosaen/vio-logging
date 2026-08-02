@@ -41,8 +41,14 @@ def estimate_R_CtoI(s: Session) -> np.ndarray:
     keep = (np.linalg.norm(A, axis=1) > 0.1) & (np.linalg.norm(B, axis=1) > 0.1)
     if keep.sum() < 50:
         raise RuntimeError("not enough rotational motion for Kabsch fit")
-    R_ItoC = kabsch(A[keep], B[keep])  # maps IMU/device vectors -> camera frame
-    return R_ItoC.T
+    R_ItoC_arkit = kabsch(A[keep], B[keep])  # IMU/device -> ARKit camera frame
+    # ARKit's camera frame is y-up/z-toward-viewer (OpenGL); OpenVINS expects
+    # the CV convention y-down/z-forward-through-lens: 180 deg flip about x.
+    flip = np.diag([1.0, -1.0, -1.0])
+    R_CtoI_cv = R_ItoC_arkit.T @ flip
+    # sanity: device +z (out of screen) must oppose the optical axis (cam +z)
+    assert R_CtoI_cv[2, 2] < -0.9, f"unexpected camera-IMU geometry:\n{R_CtoI_cv}"
+    return R_CtoI_cv
 
 
 def yaml_matrix(m: np.ndarray, indent: str = "    ") -> str:

@@ -5,10 +5,11 @@
     <arg name="bag"         default="/data/cam_imu.bag" />
     <arg name="path_est"    default="/data/openvins/traj_estimate.txt" />
     <arg name="verbosity"   default="INFO" />
+    <arg name="bag_start"   default="0" /> <!-- seconds into the bag to begin -->
 
     <node name="ov_msckf" pkg="ov_msckf" type="ros1_serial_msckf" output="screen" clear_params="true" required="true">
         <param name="path_bag"    type="str"    value="$(arg bag)" />
-        <param name="bag_start"   type="double" value="0" />
+        <param name="bag_start"   type="double" value="$(arg bag_start)" />
         <param name="bag_durr"    type="int"    value="-1" />
         <param name="verbosity"   type="str"    value="$(arg verbosity)" />
         <param name="config_path" type="str"    value="$(arg config_path)" />
