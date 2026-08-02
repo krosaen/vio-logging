@@ -1,0 +1,5 @@
+target_type: 'aprilgrid'
+tagCols: 6
+tagRows: 6
+tagSize: 0.025400   # meters, edge of black square — verify after printing!
+tagSpacing: 0.3   # gap = tagSpacing * tagSize

@@ -6,3 +6,4 @@ matplotlib>=3.11
 opencv-python>=4.10
 rosbags>=0.10
 rerun-sdk>=0.35
+pillow>=11
