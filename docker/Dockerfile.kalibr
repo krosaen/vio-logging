@@ -24,6 +24,16 @@ RUN . /opt/ros/noetic/setup.sh && cd /catkin_ws \
     && catkin config --extend /opt/ros/noetic --cmake-args -DCMAKE_BUILD_TYPE=Release \
     && catkin build -j2   # -j2: same 8 GB VM memory ceiling as the OpenVINS build
 
+# Kalibr's aprilgrid detector defaults to blackTagBorder=2 (kalibr-generated
+# PDFs); our boards use standard 1-module-border tags (OpenCV DICT_APRILTAG_
+# 36h11, tools/make_aprilgrid.py). Patch the two construction sites.
+RUN sed -i 's/options = acv_april\.AprilgridOptions()/options = acv_april.AprilgridOptions(); options.blackTagBorder = 1  # opencv-generated tags/' \
+    /catkin_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_camera_calibration/CameraCalibrator.py \
+    /catkin_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_imu_camera_calibration/IccSensors.py \
+    && grep -c "blackTagBorder = 1" \
+    /catkin_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_camera_calibration/CameraCalibrator.py \
+    /catkin_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_imu_camera_calibration/IccSensors.py
+
 # cv_bridge's boost python extension fails to initialize on arm64 noetic
 # (both apt and source builds). Kalibr only needs imgmsg_to_cv2, so we shadow
 # the module with a pure-python shim, prepended to PYTHONPATH in the entrypoint.
