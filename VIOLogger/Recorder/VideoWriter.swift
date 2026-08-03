@@ -74,6 +74,22 @@ final class VideoWriter {
     }
 
     var error: Error? { writer.error }
+    var hasFailed: Bool { writer.status == .failed }
+
+    /// Full diagnostic string incl. domain/code/underlying error — the
+    /// localizedDescription alone is often just "The operation could not be
+    /// completed".
+    var failureDetail: String? {
+        guard let e = writer.error as NSError? else { return nil }
+        var s = "\(e.domain)#\(e.code): \(e.localizedDescription)"
+        if let u = e.userInfo[NSUnderlyingErrorKey] as? NSError {
+            s += " | underlying \(u.domain)#\(u.code): \(u.localizedDescription)"
+        }
+        if let status = e.userInfo["AVErrorMediaSubTypeKey"] {
+            s += " | mediaSubType \(status)"
+        }
+        return s
+    }
 
     func finish(completion: @escaping () -> Void) {
         guard writer.status == .writing else {

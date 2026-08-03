@@ -204,8 +204,9 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
                 var meta = meta
                 meta["frames_appended"] = video.framesAppended
                 meta["frames_dropped"] = video.framesDropped
-                if let err = video.error {
-                    meta["video_error"] = err.localizedDescription
+                if video.error != nil {
+                    meta["video_error"] = video.failureDetail
+                        ?? video.error!.localizedDescription
                 }
                 self.writeMeta(meta, to: dir)
                 let note = video.error.map { "video error: \($0.localizedDescription)" }
@@ -308,6 +309,17 @@ final class SessionRecorder: NSObject, ObservableObject, ARSessionDelegate {
         frameIdx += 1
 
         videoWriter?.append(frame.capturedImage, timestamp: t)
+
+        // If the writer died (encoder failure, interruption), stop immediately
+        // and surface the full error rather than silently dropping frames.
+        if let vw = videoWriter, vw.hasFailed {
+            let detail = vw.failureDetail ?? "unknown video writer failure"
+            DispatchQueue.main.async {
+                self.lastError = "Video writer failed — recording stopped.\n\(detail)"
+            }
+            endRecording()
+            return
+        }
 
         var wroteDepth = false
         if idx % Self.depthEvery == 0, let sceneDepth = frame.sceneDepth,
