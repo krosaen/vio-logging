@@ -188,9 +188,28 @@ imu0:
 """
 
 
+def load_camchain(path: Path) -> dict:
+    """Minimal parser for our single-camera camchain yaml."""
+    out = {}
+    for line in path.read_text().splitlines():
+        line = line.split("#")[0].strip()
+        if line.startswith("intrinsics:") or line.startswith("distortion_coeffs:"):
+            key, _, val = line.partition(":")
+            out[key] = [float(v) for v in val.strip().strip("[]").split(",")]
+        elif line.startswith("resolution:"):
+            out["resolution"] = [int(float(v)) for v in
+                                 line.split(":")[1].strip().strip("[]").split(",")]
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("session", type=Path)
+    ap.add_argument("--calib", type=Path,
+                    default=Path(__file__).parent.parent / "calibration/camchain.yaml",
+                    help="camchain yaml with calibrated intrinsics+distortion "
+                         "(from tools/calibrate_intrinsics.py); falls back to "
+                         "ARKit median intrinsics + zero distortion if absent")
     args = ap.parse_args()
 
     s = Session(args.session)
@@ -200,6 +219,18 @@ def main():
     info = json.loads((out / "bag_info.json").read_text())
     scale = info["scale"]
     fx, fy, cx, cy = s.median_intrinsics() * scale
+    dist = [0.0, 0.0, 0.0, 0.0]
+    if args.calib.exists():
+        chain = load_camchain(args.calib)
+        if chain.get("resolution") != [info["width"], info["height"]]:
+            raise SystemExit(
+                f"calibration resolution {chain.get('resolution')} != bag "
+                f"resolution {[info['width'], info['height']]}")
+        fx, fy, cx, cy = chain["intrinsics"]
+        dist = chain["distortion_coeffs"]
+        print(f"using calibrated camera model from {args.calib}")
+    else:
+        print("no calibration file — using ARKit intrinsics, zero distortion")
 
     R_CtoI = estimate_R_CtoI(s)
     T_imu_cam = np.eye(4)
@@ -212,7 +243,7 @@ cam0:
 {yaml_matrix(T_imu_cam)}
   cam_overlaps: []
   camera_model: pinhole
-  distortion_coeffs: [0.0, 0.0, 0.0, 0.0]
+  distortion_coeffs: [{dist[0]:.6f}, {dist[1]:.6f}, {dist[2]:.7f}, {dist[3]:.7f}]
   distortion_model: radtan
   intrinsics: [{fx:.4f}, {fy:.4f}, {cx:.4f}, {cy:.4f}]
   resolution: [{info["width"]}, {info["height"]}]
