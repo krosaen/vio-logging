@@ -11,6 +11,7 @@ mkdir -p "$SESSION_DIR/kalibr"
 docker run --rm \
     -v "$SESSION_DIR":/data \
     -v "$REPO_DIR/target":/target:ro \
+    -e KALIBR_FOCAL_INIT="${KALIBR_FOCAL_INIT:-}" \
     -w /data/kalibr \
     kalibr \
     rosrun kalibr kalibr_calibrate_cameras \

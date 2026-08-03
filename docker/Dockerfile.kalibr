@@ -34,6 +34,13 @@ RUN sed -i 's/options = acv_april\.AprilgridOptions()/options = acv_april.Aprilg
     /catkin_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_camera_calibration/CameraCalibrator.py \
     /catkin_ws/src/kalibr/aslam_offline_calibration/kalibr/python/kalibr_imu_camera_calibration/IccSensors.py
 
+# Kalibr's vanishing-point focal auto-init is unreliable on small low-
+# distortion boards (converged to f~280 vs true ~672 on clean data). Allow a
+# manual override via KALIBR_FOCAL_INIT applied after initializeIntrinsics.
+# (Patch lives in a file — this builder does not support RUN heredocs.)
+COPY patch_kalibr.py /patch_kalibr.py
+RUN python3 /patch_kalibr.py
+
 # cv_bridge's boost python extension fails to initialize on arm64 noetic
 # (both apt and source builds). Kalibr only needs imgmsg_to_cv2, so we shadow
 # the module with a pure-python shim, prepended to PYTHONPATH in the entrypoint.
