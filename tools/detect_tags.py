@@ -84,8 +84,12 @@ def main():
     ap.add_argument("--target", type=Path,
                     default=Path(__file__).parent.parent / "target/aprilgrid.yaml")
     ap.add_argument("--pnp", action="store_true",
-                    help="also solve per-frame board pose (uses session median "
-                         "intrinsics, zero distortion) and report reproj RMS")
+                    help="also solve per-frame board pose and report reproj RMS")
+    ap.add_argument("--calib", type=Path,
+                    default=Path(__file__).parent.parent
+                    / "calibration/intrinsics_fullres.yaml",
+                    help="full-res intrinsics yaml (from calibrate_intrinsics); "
+                         "falls back to ARKit median + zero distortion")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -97,10 +101,18 @@ def main():
     board = corners_3d(int(target["tagRows"]), int(target["tagCols"]),
                        float(target["tagSize"]), float(target["tagSpacing"]))
 
-    K = None
+    K, dist = None, None
     if args.pnp:
-        fx, fy, cx, cy = s.median_intrinsics()
-        K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+        if args.calib.exists():
+            vals = load_target(args.calib)  # flat key: value parser works here
+            K = np.array([[vals["fx"], 0, vals["cx"]],
+                          [0, vals["fy"], vals["cy"]], [0, 0, 1]])
+            dist = np.array([vals["k1"], vals["k2"], vals["p1"], vals["p2"]])
+            print(f"PnP using calibrated model from {args.calib}")
+        else:
+            fx, fy, cx, cy = s.median_intrinsics()
+            K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+            print("PnP using ARKit median intrinsics, zero distortion")
 
     n_frames_with = 0
     n_corners = 0
@@ -118,9 +130,9 @@ def main():
                 obj = np.concatenate([board[i] for i, _ in dets])
                 img = np.concatenate([c for _, c in dets])
                 ok, rvec, tvec = cv2.solvePnP(
-                    obj, img, K, None, flags=cv2.SOLVEPNP_IPPE)
+                    obj, img, K, dist, flags=cv2.SOLVEPNP_IPPE)
                 if ok:
-                    proj, _ = cv2.projectPoints(obj, rvec, tvec, K, None)
+                    proj, _ = cv2.projectPoints(obj, rvec, tvec, K, dist)
                     rms = float(np.sqrt(
                         ((proj.reshape(-1, 2) - img) ** 2).sum(1).mean()))
                     rms_all.append(rms)
