@@ -40,6 +40,9 @@ def main():
     ap.add_argument("session", type=Path)
     ap.add_argument("--scale", type=float, default=0.5,
                     help="image downscale factor (default 0.5 -> 960x720)")
+    ap.add_argument("--frame-stride", type=int, default=1,
+                    help="write every Nth camera frame (e.g. 15 -> 4 Hz for "
+                         "kalibr_calibrate_cameras); IMU is always full rate")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -78,6 +81,8 @@ def main():
 
         width = height = None
         for idx, t, img in s.iter_video(gray=True):
+            if idx % args.frame_stride:
+                continue
             if args.scale != 1.0:
                 img = cv2.resize(img, None, fx=args.scale, fy=args.scale,
                                  interpolation=cv2.INTER_AREA)
@@ -95,6 +100,11 @@ def main():
                          typestore.serialize_ros1(msg, Image.__msgtype__))
             if idx % 120 == 0:
                 print(f"  frame {idx}/{len(s.frames.t)}")
+
+    if args.frame_stride != 1:
+        # calibration side-bag: don't overwrite the main bag's info
+        print(f"wrote {out} ({out.stat().st_size / 1e6:.0f} MB), strided x{args.frame_stride}")
+        return
 
     info = {
         "scale": args.scale,

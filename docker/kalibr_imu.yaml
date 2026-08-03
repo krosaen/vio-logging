@@ -1,0 +1,8 @@
+# iPhone IMU noise model for kalibr_calibrate_imu_camera.
+# Same phone-grade values (inflated vs datasheet) as the OpenVINS chain.
+rostopic: /imu0
+update_rate: 100.0
+accelerometer_noise_density: 2.0e-2   # [m/s^2/sqrt(Hz)]
+accelerometer_random_walk: 2.0e-3     # [m/s^3/sqrt(Hz)]
+gyroscope_noise_density: 2.0e-3       # [rad/s/sqrt(Hz)]
+gyroscope_random_walk: 1.0e-4         # [rad/s^2/sqrt(Hz)]
